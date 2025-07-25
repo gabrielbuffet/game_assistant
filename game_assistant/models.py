@@ -45,7 +45,8 @@ class Village:
     def from_dict(cls, data: dict) -> 'Village':
         return cls(
             name=data.get("name", ""),
-            production=data.get("production", 0)
+            production=data.get("production", 0),
+            routes=data.get("routes", {})
         )
 
     @staticmethod
