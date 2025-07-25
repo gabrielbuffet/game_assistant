@@ -1,13 +1,24 @@
 from pulp import LpMinimize, LpProblem, LpVariable, lpSum, LpStatus
 from typing import Dict
 
-from models import Instance
+from game_assistant.models import Instance
 
 def solve_instance(instance: Instance) -> Dict[str, Dict[str, int]]:
     """
-    Solve the instance using linear programming to minimize the total route costs.
-    Returns a dictionary with the optimal routes.
+    Solve the instance using linear programming to find the optimal routes between villages.
+    Args:
+        instance (Instance): The instance containing villages and their routes.
+    Returns:
+        Dict[str, Dict[str, int]]: A dictionary where keys are village names and values
+        are dictionaries of routes with amounts.
+    Raises:
+        ValueError: If the instance has no villages or routes.
     """
+    if not instance.villages:
+        raise ValueError("The instance has no villages.")
+    if not any(village.routes for village in instance.villages):
+        raise ValueError("The instance has no routes between villages.")
+    
     # Create the LP problem
     problem = LpProblem("Optimal_Route_Problem", LpMinimize)
 
@@ -18,13 +29,15 @@ def solve_instance(instance: Instance) -> Dict[str, Dict[str, int]]:
     }
 
     # Objective function: minimize the total cost of routes
-    problem += lpSum(route_vars[village.name, to_village] * village.routes[to_village]
+    problem += lpSum(route_vars[(village.name, to_village)] * village.routes[to_village]
                      for village in instance.villages for to_village in village.routes), "Total_Cost"
 
-    # Constraints: ensure that production is met
+    # Constraints: ensure that the net cereal balance is non-negative
     for village in instance.villages:
-        problem += lpSum(route_vars[village.name, to_village] for to_village in village.routes) == village.production, \
-            f"Production_Constraint_{village.name}"
+        outgoing = lpSum(route_vars[(village.name, to_village)] for to_village in village.routes)
+        incoming = lpSum(route_vars[(other_village.name, village.name)] for other_village in instance.villages
+                         if village.name in other_village.routes)
+        problem += village.production - outgoing + incoming >= 0, f"Production_Constraint_{village.name}"
 
     # Solve the problem
     problem.solve()
