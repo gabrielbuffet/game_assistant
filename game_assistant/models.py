@@ -82,11 +82,11 @@ class Instance:
         matrix = np.zeros((size, size), dtype=int)
         
         for i, village in enumerate(self.villages):
-            for route_name, production in village.routes.items():
+            for route_name, amount in village.routes.items():
                 if route_name in self.villages_map:
                     j = self.villages.index(self.villages_map[route_name])
-                    matrix[i][j] = production
-        
+                    matrix[i][j] = amount
+
         return matrix
  
     def add_village(self, village: Village) -> None:
