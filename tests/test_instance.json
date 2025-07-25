@@ -1,0 +1,16 @@
+{
+    "villages": [
+        {
+            "name": "VillageA",
+            "production": 100,
+            "routes": {}
+        },
+        {
+            "name": "VillageB",
+            "production": 150,
+            "routes": {
+                "VillageA": 50
+            }
+        }
+    ]
+}
