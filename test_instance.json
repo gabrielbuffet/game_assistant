@@ -3,7 +3,9 @@
         {
             "name": "VillageA",
             "production": 100,
-            "routes": {}
+            "routes": {
+                "VillageB": 30
+            }
         },
         {
             "name": "VillageB",
