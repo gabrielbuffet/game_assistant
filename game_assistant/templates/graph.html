@@ -17,7 +17,6 @@ fetch('/solution.json')
       return;
     }
 
-    // Reference map
     const nodeMap = new Map(data.nodes.map(d => [d.id, d]));
     data.links.forEach(link => {
       link.source = nodeMap.get(link.source);
@@ -30,8 +29,8 @@ fetch('/solution.json')
     const radius = 250;
     const cx = width / 2;
     const cy = height / 2;
+    const offset = 1;
 
-    // Position nodes in a circle
     const angleStep = 2 * Math.PI / data.nodes.length;
     data.nodes.forEach((node, i) => {
       node.x = cx + radius * Math.cos(i * angleStep);
@@ -51,6 +50,36 @@ fetch('/solution.json')
       .attr("x2", d => d.target.x)
       .attr("y2", d => d.target.y);
 
+    // Add arrow-like labels at the middle of each link
+    svg.append("g")
+      .selectAll("text")
+      .data(data.links)
+      .join("text")
+      .text("➤")  // Use a symbol you like, e.g., ">>>", "➝", "➤"
+      .attr("x", d => {
+        const dx = d.target.x - d.source.x;
+        const dy = d.target.y - d.source.y;
+        const len = Math.sqrt(dx*dx + dy*dy);
+        return (d.source.x + d.target.x)/2 + offset * dx / len;
+      })
+      .attr("y", d => {
+        const dx = d.target.x - d.source.x;
+        const dy = d.target.y - d.source.y;
+        const len = Math.sqrt(dx*dx + dy*dy);
+        return (d.source.y + d.target.y)/2 + offset * dy / len;
+      })
+      .attr("text-anchor", "middle")
+      .attr("alignment-baseline", "middle")
+      .attr("font-size", 16)
+      .attr("fill", "#333")
+      .attr("transform", d => {
+        const x = (d.source.x + d.target.x) / 2;
+        const y = (d.source.y + d.target.y) / 2;
+        const angle = Math.atan2(d.target.y - d.source.y, d.target.x - d.source.x) * 180 / Math.PI;
+        return `rotate(${angle},${x},${y})`;
+      })
+      .style("font-family", "Arial, sans-serif");
+
     // Draw nodes
     svg.append("g")
       .attr("stroke", "#fff")
@@ -63,7 +92,7 @@ fetch('/solution.json')
       .attr("cy", d => d.y)
       .attr("fill", d => d.balance >= 0 ? "#6c6" : "#f66");
 
-    // Draw labels
+    // Draw node labels
     svg.append("g")
       .selectAll("text")
       .data(data.nodes)
@@ -72,7 +101,8 @@ fetch('/solution.json')
       .attr("x", d => d.x)
       .attr("y", d => d.y - 25)
       .attr("text-anchor", "middle")
-      .attr("font-size", 12);
+      .attr("font-size", 12)
+      .style("font-family", "Arial, sans-serif");
   });
 </script>
 
