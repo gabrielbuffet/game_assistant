@@ -1,13 +1,14 @@
-from pulp import LpMinimize, LpProblem, LpVariable, lpSum, LpStatus
-from typing import Dict
+from pulp import LpMinimize, LpProblem, LpVariable, lpSum, LpStatus, PULP_CBC_CMD
+from typing import Optional
 
 from game_assistant.models import Instance
 
-def solve_instance(instance: Instance) -> Dict[str, Dict[str, int]]:
+def solve_instance(instance: Instance, forbidden_routes: Optional[set] = set()) -> dict[str, dict[str, int]]:
     """
     Solve the instance using linear programming to find the optimal routes between villages.
     Args:
         instance (Instance): The instance containing villages and their routes.
+        forbidden_routes (set): A set of tuples representing forbidden routes.
     Returns:
         Dict[str, Dict[str, int]]: A dictionary where keys are village names and values
         are dictionaries of routes with amounts.
@@ -15,41 +16,53 @@ def solve_instance(instance: Instance) -> Dict[str, Dict[str, int]]:
         ValueError: If the instance has no villages or routes.
     """
     if not instance.villages:
-        raise ValueError("The instance has no villages.")
-    if not any(village.routes for village in instance.villages):
-        raise ValueError("The instance has no routes between villages.")
+        raise ValueError("Instance has no villages.")
     
-    # Create the LP problem
-    problem = LpProblem("Optimal_Route_Problem", LpMinimize)
+    n = len(instance.villages)
 
-    # Create variables for each route
-    route_vars = {
-        (village.name, to_village): LpVariable(f"route_{village.name}_{to_village}", lowBound=0, cat='Integer')
-        for village in instance.villages for to_village in village.routes
+    allowed_routes = [
+        (i, j) for i in range(n) for j in range(n)
+        if i != j and (instance.villages[i].name, instance.villages[j].name) not in forbidden_routes
+    ]
+
+    if not allowed_routes:
+        raise ValueError("No allowed routes available after applying forbidden routes.")
+    
+    total_prod = sum(village.production for village in instance.villages)
+    if total_prod < 0:
+        raise ValueError("Total production is zero, cannot solve instance.")
+    
+    problem = LpProblem("VillageRouting", LpMinimize)
+
+    x = {
+        (i, j): LpVariable(f"x_{i}_{j}", lowBound=0, cat='Integer')
+        for i, j in allowed_routes
     }
+    
+    problem += lpSum(x[i, j] for i, j in allowed_routes), "Total_Routes"
 
-    # Objective function: minimize the total cost of routes
-    problem += lpSum(route_vars[(village.name, to_village)] * village.routes[to_village]
-                     for village in instance.villages for to_village in village.routes), "Total_Cost"
+    for i, village in enumerate(instance.villages):
+        if village.production >= 0:
+            problem += lpSum(x[i, j] for j in range(n) if (i, j) in allowed_routes) <= village.production, f"Production_Constraint_{i}"
+        else:
+            problem += lpSum(x[j, i] for j in range(n) if (j, i) in allowed_routes) >= -village.production, f"Consumption_Constraint_{i}"
 
-    # Constraints: ensure that the net cereal balance is non-negative
-    for village in instance.villages:
-        outgoing = lpSum(route_vars[(village.name, to_village)] for to_village in village.routes)
-        incoming = lpSum(route_vars[(other_village.name, village.name)] for other_village in instance.villages
-                         if village.name in other_village.routes)
-        problem += village.production - outgoing + incoming >= 0, f"Production_Constraint_{village.name}"
+    for (i, j), var in x.items():
+        var.setInitialValue(instance.routes_matrix[i, j])
+    
+    solver = PULP_CBC_CMD(msg=False, warmStart=True)
+    problem.solve(solver)
 
-    # Solve the problem
-    problem.solve()
-
-    # Check the status of the solution
-    if LpStatus[problem.status] != 'Optimal':
-        raise ValueError("No optimal solution found.")
-
-    # Prepare the result
-    result = {village.name: {} for village in instance.villages}
-    for (from_village, to_village), var in route_vars.items():
-        if var.varValue > 0:
-            result[from_village][to_village] = int(var.varValue)
+    status = LpStatus[problem.status]
+    if status != 'Optimal':
+        raise ValueError(f"Problem status is not optimal: {status}")
+    
+    result = {}
+    for i, village in enumerate(instance.villages):
+        result[village.name] = {}
+        for j in range(n):
+            if (i, j) in x and x[i, j].varValue > 0:
+                target_village = instance.villages[j].name
+                result[village.name][target_village] = int(x[i, j].varValue)
 
     return result
