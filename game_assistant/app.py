@@ -1,6 +1,5 @@
 from flask import Flask, render_template, redirect, url_for, flash, current_app, jsonify
 import argparse
-import sys
 
 from game_assistant.models import Instance, Village
 from game_assistant.optimal import solve_instance

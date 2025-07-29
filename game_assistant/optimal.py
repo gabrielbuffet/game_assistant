@@ -1,4 +1,4 @@
-from pulp import LpMinimize, LpProblem, LpVariable, lpSum, LpStatus, PULP_CBC_CMD
+from pulp import LpMinimize, LpProblem, LpVariable, lpSum, LpStatus
 from typing import Optional
 
 from game_assistant.models import Instance
