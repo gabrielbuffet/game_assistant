@@ -2,12 +2,13 @@ from typing import Optional
 import json
 import os
 import numpy as np
+import warnings
 
 class Village:
-    def __init__(self, name: str, production: int, routes: Optional[dict[str,int]] = {}):
+    def __init__(self, name: str, production: int, routes: Optional[dict[str,int]] = None):
         self.name = name
         self.production = production
-        self.routes = routes
+        self.routes = routes if routes is not None else {}
 
     def update_route(self, target_village: str, amount: int) -> None:
         if target_village not in self.routes:
@@ -75,18 +76,23 @@ class Village:
 class Instance:
     def __init__(self, villages: Optional[list[Village]] = None):
         self.villages = villages if villages is not None else []
-        self.villages_map = {village.name: village for village in self.villages}
+        self.villages_map = self._villages_map()
         self.routes_matrix = self._calculate_routes_matrix()
 
+    def _villages_map(self) -> dict[str, int]:
+        return {village.name: i for i, village in enumerate(self.villages)}
+    
     def _calculate_routes_matrix(self) -> np.ndarray:
         size = len(self.villages)
         matrix = np.zeros((size, size), dtype=int)
         
         for i, village in enumerate(self.villages):
-            for route_name, amount in village.routes.items():
-                if route_name in self.villages_map:
-                    j = self.villages.index(self.villages_map[route_name])
+            for target, amount in village.routes.items():
+                if target in self.villages_map:
+                    j = self.villages_map[target]
                     matrix[i][j] = amount
+                else:
+                    warnings.warn(f"Target village '{target}' does not exist in the instance.")
 
         return matrix
  
@@ -94,19 +100,24 @@ class Instance:
         if village.name in self.villages_map:
             raise ValueError(f"Village '{village.name}' already exists.")
         self.villages.append(village)
-        self.villages_map[village.name] = village
+        self.villages_map[village.name] = len(self.villages) - 1
         self.routes_matrix = self._calculate_routes_matrix()
 
     def get_village(self, name: str) -> Optional[Village]:
-        return self.villages_map.get(name)
-
+        if name in self.villages_map:
+            return self.villages[self.villages_map[name]]
+        return None
+        
     def remove_village(self, name: str) -> None:
         village = self.get_village(name)
         if not village:
             raise ValueError(f"Village '{name}' does not exist.")
+        
         self.villages.remove(village)
         del self.villages_map[name]
         self.routes_matrix = self._calculate_routes_matrix()
+        
+        self.villages_map = self._villages_map()
 
     def update_village(self, name: str, production: int, routes: Optional[dict[str,int]] = None) -> None:
         village = self.get_village(name)
@@ -115,7 +126,12 @@ class Instance:
         
         village.production = production
         if routes is not None:
-            village.routes = routes
+            for target, amount in routes.items():
+                if target in self.villages_map:
+                    village.update_route(target, amount)
+                else:
+                    raise ValueError(f"Target village '{target}' does not exist.")
+        
         self.routes_matrix = self._calculate_routes_matrix()
     
     def add_route(self, from_village: str, to_village: str, amount: int) -> None:
@@ -125,8 +141,8 @@ class Instance:
         if to_village not in self.villages_map:
             raise ValueError(f"Target village '{to_village}' does not exist, please add it first.")
         village.add_route(to_village, amount)
-        self.routes_matrix = self._calculate_routes_matrix()
-
+        self.routes_matrix[self.villages_map[from_village], self.villages_map[to_village]] = amount
+        
     def update_route(self, from_village: str, to_village: str, amount: int) -> None:
         village = self.get_village(from_village)
         if not village:
@@ -134,7 +150,7 @@ class Instance:
         if to_village not in village.routes:
             raise ValueError(f"Route to '{to_village}' does not exist in village '{from_village}'.")
         village.update_route(to_village, amount)
-        self.routes_matrix = self._calculate_routes_matrix()
+        self.routes_matrix[self.villages_map[from_village], self.villages_map[to_village]] = amount
 
     def remove_route(self, from_village: str, to_village: str) -> None:
         village = self.get_village(from_village)
@@ -143,8 +159,8 @@ class Instance:
         if to_village not in village.routes:
             raise ValueError(f"Route to '{to_village}' does not exist in village '{from_village}'.")
         village.remove_route(to_village)
-        self.routes_matrix = self._calculate_routes_matrix()
-
+        self.routes_matrix[self.villages_map[from_village], self.villages_map[to_village]] = 0
+        
     def __str__(self) -> str:
         return f"Instance(villages={self.villages})"
     
