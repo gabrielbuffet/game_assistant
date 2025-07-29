@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Optimal Routing</h1>
+
+<div id="graph-container">
+  <svg width="800" height="600" style="border:1px solid #ccc;"></svg>
+</div>
+
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script>
+fetch('/solution.json')
+  .then(res => res.json())
+  .then(data => {
+    if (data.error) {
+      document.getElementById("graph-container").innerHTML = "<p style='color:red;'>" + data.error + "</p>";
+      return;
+    }
+
+    // Reference map
+    const nodeMap = new Map(data.nodes.map(d => [d.id, d]));
+    data.links.forEach(link => {
+      link.source = nodeMap.get(link.source);
+      link.target = nodeMap.get(link.target);
+    });
+
+    const svg = d3.select("svg");
+    const width = +svg.attr("width");
+    const height = +svg.attr("height");
+    const radius = 250;
+    const cx = width / 2;
+    const cy = height / 2;
+
+    // Position nodes in a circle
+    const angleStep = 2 * Math.PI / data.nodes.length;
+    data.nodes.forEach((node, i) => {
+      node.x = cx + radius * Math.cos(i * angleStep);
+      node.y = cy + radius * Math.sin(i * angleStep);
+    });
+
+    // Draw links
+    svg.append("g")
+      .attr("stroke", "#999")
+      .attr("stroke-opacity", 0.6)
+      .selectAll("line")
+      .data(data.links)
+      .join("line")
+      .attr("stroke-width", d => Math.sqrt(d.amount))
+      .attr("x1", d => d.source.x)
+      .attr("y1", d => d.source.y)
+      .attr("x2", d => d.target.x)
+      .attr("y2", d => d.target.y);
+
+    // Draw nodes
+    svg.append("g")
+      .attr("stroke", "#fff")
+      .attr("stroke-width", 1.5)
+      .selectAll("circle")
+      .data(data.nodes)
+      .join("circle")
+      .attr("r", 20)
+      .attr("cx", d => d.x)
+      .attr("cy", d => d.y)
+      .attr("fill", d => d.balance >= 0 ? "#6c6" : "#f66");
+
+    // Draw labels
+    svg.append("g")
+      .selectAll("text")
+      .data(data.nodes)
+      .join("text")
+      .text(d => `${d.id} (${d.balance})`)
+      .attr("x", d => d.x)
+      .attr("y", d => d.y - 25)
+      .attr("text-anchor", "middle")
+      .attr("font-size", 12);
+  });
+</script>
+
+<a href="{{ url_for('index') }}">Back to Index</a>
+
+{% endblock %}

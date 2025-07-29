@@ -1,4 +1,4 @@
-from flask import Flask, render_template, redirect, url_for, flash, current_app
+from flask import Flask, render_template, redirect, url_for, flash, current_app, jsonify
 import argparse
 import sys
 
@@ -10,11 +10,10 @@ app = Flask(__name__)
 
 app.config['SECRET_KEY'] = 'keyofgod'  # Replace with a secure key in production
 
-optimal_routes = {}
-
 @app.route('/')
 def index():
     instance = current_app.config['INSTANCE']
+    optimal_routes = current_app.config.get('OPTIMAL_ROUTES', {})
     villages = instance.villages
     villages_js = [
         {
@@ -47,6 +46,7 @@ def add_village():
             instance.add_village(village)
             flash(f"Village '{name}' added successfully.", 'success')
             return redirect(url_for('index'))
+    current_app.config['INSTANCE'] = instance
     return render_template('add_village.html', form=form)
 
 @app.route('/edit_village/<string:name>', methods=['GET', 'POST'])
@@ -61,6 +61,7 @@ def edit_village(name):
         village.production = form.production.data
         flash(f"Village '{name}' updated successfully.", 'success')
         return redirect(url_for('index'))
+    current_app.config['INSTANCE'] = instance
     return render_template('edit_village.html', form=form, village=village)
 
 @app.route('/remove_village/<string:name>')
@@ -68,6 +69,7 @@ def remove_village(name):
     instance = current_app.config['INSTANCE']
     try:
         instance.remove_village(name)
+        current_app.config['INSTANCE'] = instance
         flash(f"Village '{name}' removed successfully.", 'success')
     except ValueError as e:
         flash(str(e), 'error')
@@ -76,10 +78,12 @@ def remove_village(name):
 @app.route('/solve_instance', methods=['GET'], endpoint='solve_instance_route')
 def solve_instance_route():
     instance = current_app.config['INSTANCE']
+    optimal_routes = current_app.config.get('OPTIMAL_ROUTES', {})
     try:
         solution = solve_instance(instance)
         optimal_routes.clear()
         optimal_routes.update(solution)
+        current_app.config['OPTIMAL_ROUTES'] = optimal_routes
         flash("Instance solved successfully.", 'success')
         return redirect(url_for('index'))
     except Exception as e:
@@ -109,6 +113,7 @@ def add_route():
             flash(f"Route from '{from_village}' to '{to_village}' added successfully.", 'success')
         except ValueError as e:
             flash(str(e), 'error')
+        current_app.config['INSTANCE'] = instance
         return redirect(url_for('index'))
     return render_template('add_route.html', form=form, villages=instance.villages)
 
@@ -125,6 +130,7 @@ def edit_route(from_village, to_village):
         try:
             instance.update_route(from_village, to_village, form.amount.data)
             flash(f"Route from '{from_village}' to '{to_village}' updated successfully.", 'success')
+            current_app.config['INSTANCE'] = instance
             return redirect(url_for('index'))
         except ValueError as e:
             flash(str(e), 'error')
@@ -138,7 +144,36 @@ def remove_route(from_village, to_village):
         flash(f"Route from '{from_village}' to '{to_village}' removed successfully.", 'success')
     except ValueError as e:
         flash(str(e), 'error')
+    current_app.config['INSTANCE'] = instance
     return redirect(url_for('index'))
+
+@app.route("/solution.json")
+def solution_json():
+    result = app.config.get("OPTIMAL_ROUTES")
+    instance = app.config.get("INSTANCE")
+    if not result or not instance:
+        return jsonify({"error": "No solution found"})
+
+    nodes = []
+    name_to_balance = {}
+    for v in instance.villages:
+        incoming = sum(result.get(src, {}).get(v.name, 0) for src in result)
+        outgoing = sum(result.get(v.name, {}).values())
+        balance = v.production + incoming - outgoing
+        nodes.append({"id": v.name, "balance": balance})
+        name_to_balance[v.name] = balance
+
+    links = []
+    for src, dests in result.items():
+        for dst, amount in dests.items():
+            links.append({"source": src, "target": dst, "amount": amount})
+
+    return jsonify({"nodes": nodes, "links": links})
+
+@app.route('/graph')
+def graph():
+    return render_template('graph.html')
+
 
 def main():
     parser = argparse.ArgumentParser(description="Game Assistant")
@@ -154,6 +189,7 @@ def main():
         instance = Instance()
 
     app.config['INSTANCE'] = instance
+    app.config['OPTIMAL_ROUTES'] = {}
     app.run(debug=True)
 
 

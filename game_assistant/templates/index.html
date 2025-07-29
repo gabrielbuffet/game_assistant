@@ -140,7 +140,15 @@
 
 </div>
 
-<h2> </h2>
-<button onclick="window.location.href='{{ url_for('solve_instance_route') }}'">Solve Instance</button>
+<div class="container">
+    <div class="column">
+        <button onclick="window.location.href='{{ url_for('solve_instance_route') }}'">Solve Instance</button>
+    </div>
+    {% if optimal_routes %}
+    <div class="column">
+        <button onclick="window.location.href='{{ url_for('graph') }}'">View Graph</button>
+    </div>
+    {% endif %}
+</div>
 {% endblock %}
 
