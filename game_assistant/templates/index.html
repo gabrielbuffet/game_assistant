@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Villages</h1>
+{% if not villages %}
+<p>No villages yet! <a href="{{ url_for('add_village') }}">Add Village</a></p>
+{% else %}
+<table>
+    <tr>
+        <th>Name <a href="{{ url_for('add_village') }}">(+)</a></th>
+        <th>Production</th>
+        <th>Actions</th>
+    </tr>
+    {% for village in villages %}
+    <tr>
+        <td>{{ village.name }}</td>
+        <td>{{ village.production }}</td>
+        <td>
+            <a href="{{ url_for('edit_village', name=village.name) }}">Edit</a>
+            <a href="{{ url_for('remove_village', name=village.name) }}">Remove</a>
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+{% endif %}
+<h2>Routes</h2>
+<div class="row">
+    <div class="column" style="width: 60%;">
+        <select id="village-select">
+        {% for village in villages %}
+        <option value="{{ village.name }}">{{ village.name }}</option>
+        {% endfor %}
+        </select>
+    </div>
+    <div class="column">
+        <div><a href="{{ url_for('add_route') }}">Add Route</a></div>
+        <div><a href="{{ url_for('edit_route', from_village=from_village, to_village=to_village) }}">Edit Route</a></div>
+        <div><a href="{{ url_for('remove_route', from_village=from_village, to_village=to_village) }}">Remove Route</a></div>
+    </div>
+    
+</div>
+
+<div class='container'>
+    <div class="column">
+        <h3 style="text-align: center;">&larr;<span id="village-name"></span> &rarr;</h3>
+        <ul id="routes-list-from" style="list-style-type: none;"></ul>
+
+        <script>
+        const villages = {{ villages_js | tojson }};
+        const byName = Object.fromEntries(villages.map(v => [v.name, v]));
+
+        const selectEl = document.getElementById('village-select');
+        const villageNameEl = document.getElementById('village-name');
+        const listEl = document.getElementById('routes-list-from');
+
+        function renderRoutes(name) {
+            const v = byName[name];
+            villageNameEl.textContent = name;
+            listEl.innerHTML = '';
+
+            if (!v.routes || v.routes.length === 0) {
+            listEl.innerHTML = '<li>No routes.</li>';
+            return;
+            }
+
+            v.routes.forEach(r => {
+            const li = document.createElement('li');
+            li.textContent = `${r.target} (amount: ${r.amount})`;
+            listEl.appendChild(li);
+            });
+        }
+
+        selectEl.addEventListener('change', (e) => renderRoutes(e.target.value));
+        renderRoutes(selectEl.value);
+        </script>
+    </div>
+    <div class="column">
+    <h3 style="text-align: center;">&rarr;<span id="village-name2"></span> &larr;</h3>
+    <ul id="routes-list-to" style="list-style-type: none;"></ul>
+
+    <script>
+        const routespervillage = {{ list_transposed | tojson }};
+        const map = {{ mapping | tojson }};
+
+        const listEl2 = document.getElementById('routes-list-to');
+        const villageNameEl2 = document.getElementById('village-name2');
+        const selectEl2 = document.getElementById('village-select');
+
+        function renderRoutes2(name) {
+        villageNameEl2.textContent = name;
+        listEl2.innerHTML = '';
+
+        const index = map[name];
+        const routes = routespervillage[index];
+
+        let hasRoutes = false;
+
+        routes.forEach((amount, fromIndex) => {
+            if (amount > 0) {
+            hasRoutes = true;
+            const li = document.createElement('li');
+            li.textContent = `${villages[fromIndex].name} (amount: ${amount})`;
+            listEl2.appendChild(li);
+            }
+        });
+
+        if (!hasRoutes) {
+            listEl2.innerHTML = '<li>No routes.</li>';
+        }
+        }
+
+        if (!selectEl2.value) {
+        selectEl2.value = Object.keys(map)[0];
+        }
+
+        selectEl2.addEventListener('change', (e) => renderRoutes2(e.target.value));
+        renderRoutes2(selectEl2.value);
+    </script>
+    </div>
+
+    {% if optimal_routes %}
+    <div class="column">
+        <h3 style="text-align: center; text-decoration-style: dashed; text-emphasis: underline; text-decoration-color: red; color: red; font-size: 1.5em; font-weight: bold; margin-bottom: 20px; margin-top: 20px; text-align: center;">Optimal Routes</h3>
+        <ul id="optimal-routes-list" style="list-style-type: none;">
+            {% for from_village, routes in optimal_routes.items() %}
+            <li>
+                <strong>{{ from_village }}</strong>:
+                <ul>
+                    {% for to_village, amount in routes.items() %}
+                    <li>{{ to_village }} (amount: {{ amount }})</li>
+                    {% endfor %}
+                </ul>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+
+
+</div>
+
+<h2> </h2>
+<button onclick="window.location.href='{{ url_for('solve_instance_route') }}'">Solve Instance</button>
+{% endblock %}
+

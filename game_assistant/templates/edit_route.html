@@ -1,0 +1,30 @@
+{extends "base.html"}
+
+{% block content %}
+
+<h1>Edit Route</h1>
+
+<form method="POST">
+    {{ form.hidden_tag() }}
+
+    <div>
+        {{ form.from_village.label }}<br>
+        {{ form.from_village() }}
+    </div>
+
+    <div>
+        {{ form.to_village.label }}<br>
+        {{ form.to_village() }}
+    </div>
+
+    <div>
+        {{ form.amount.label }}<br>
+        {{ form.amount() }}
+    </div>
+
+    <div>
+        {{ form.submit() }}
+    </div>
+</form> 
+
+{% endblock %}
