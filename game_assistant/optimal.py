@@ -30,7 +30,7 @@ def solve_instance(instance: Instance, forbidden_routes: Optional[set] = set()) 
     
     total_prod = sum(village.production for village in instance.villages)
     if total_prod < 0:
-        raise ValueError("Total production is zero, cannot solve instance.")
+        raise ValueError("Total production is negative, cannot solve instance.")
     
     problem = LpProblem("VillageRouting", LpMinimize)
 
