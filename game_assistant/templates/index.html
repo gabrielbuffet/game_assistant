@@ -5,6 +5,11 @@
 {% if not villages %}
 <p>No villages yet! <a href="{{ url_for('add_village') }}">Add Village</a></p>
 {% else %}
+<form method="POST" action="{{ url_for('paste') }}">
+    <label for="instance_data">Paste your instance input here:</label>
+    <textarea id="instance_data" name="instance_data" rows="1" cols="1"></textarea>
+    <input type="submit" value="Submit">
+</form>
 <table>
     <tr>
         <th>Name <a href="{{ url_for('add_village') }}">(+)</a></th>
@@ -145,6 +150,9 @@
         <button onclick="window.location.href='{{ url_for('solve_instance_route') }}'">Solve Instance</button>
     </div>
     {% if optimal_routes %}
+    <form method="POST" action="{{ url_for('set_routes_to_optimal') }}">
+        <button type="submit">Set Routes to Optimal</button>
+    </form>
     <div class="column">
         <button onclick="window.location.href='{{ url_for('graph') }}'">View Graph</button>
     </div>
