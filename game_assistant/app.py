@@ -1,9 +1,10 @@
-from flask import Flask, render_template, redirect, url_for, flash, current_app, jsonify
+from flask import Flask, render_template, redirect, url_for, flash, current_app, jsonify, request
 import argparse
 
 from game_assistant.models import Instance, Village
 from game_assistant.optimal import solve_instance
 from game_assistant.forms import VillageForm, RouteForm
+from game_assistant.paste import get_instance_from_input
 
 app = Flask(__name__)
 
@@ -172,6 +173,41 @@ def solution_json():
 @app.route('/graph')
 def graph():
     return render_template('graph.html')
+
+@app.route('/paste', methods=['POST'])
+def paste():
+    input_str = request.form.get('instance_data', '')
+    if not input_str:
+        flash("No input provided.", 'error')
+        return redirect(url_for('index'))
+    try:
+        instance = get_instance_from_input(input_str)
+        current_app.config['INSTANCE'] = instance
+        flash("Instance loaded successfully.", 'success')
+    except Exception as e:
+        flash(f"Error loading instance: {str(e)}", 'error')
+    return redirect(url_for('index'))
+
+@app.route('/set_routes_to_optimal', methods=['POST'])
+def set_routes_to_optimal():
+    instance = current_app.config['INSTANCE']
+    optimal_routes = current_app.config.get('OPTIMAL_ROUTES', {})
+    if not optimal_routes:
+        flash("No optimal routes available to set.", 'error')
+        return redirect(url_for('index'))
+    
+    try:
+        instance.clear_routes()
+        for from_village, routes in optimal_routes.items():
+            for to_village, amount in routes.items():
+                instance.add_route(from_village, to_village, amount)
+        current_app.config['INSTANCE'] = instance
+        current_app.config['OPTIMAL_ROUTES'] = {}
+        flash("Routes set to optimal successfully.", 'success')
+    except Exception as e:
+        flash(f"Error setting routes to optimal: {str(e)}", 'error')
+    
+    return redirect(url_for('index'))
 
 
 def main():
