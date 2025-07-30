@@ -1,0 +1,36 @@
+{
+    "villages": [
+        {
+            "name": "01",
+            "production": 100,
+            "routes": {
+                "02": 20
+            }
+        },
+        {
+            "name": "02",
+            "production": 50,
+            "routes": {
+                "03": 10
+            }
+        },
+        {
+            "name": "03",
+            "production": -30,
+            "routes": {}
+        },
+        {
+            "name": "04",
+            "production": 200,
+            "routes": {
+                "01": 40,
+                "02": 30
+            }
+        },
+        {
+            "name": "05",
+            "production": -100,
+            "routes": {}
+        }
+    ]
+}
