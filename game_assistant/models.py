@@ -24,10 +24,14 @@ class Village:
             raise ValueError("Amount must be non-negative.")
         
         self.routes[target_village] = amount
+
     def remove_route(self, target_village: str) -> None:
         if target_village not in self.routes:
             raise ValueError(f"Route to '{target_village}' does not exist.")
         del self.routes[target_village]
+    
+    def clear_routes(self) -> None:
+        self.routes.clear()
 
     def __str__(self) -> str:
         return f"Village(name={self.name}, production={self.production}, routes={self.routes})"
@@ -160,6 +164,11 @@ class Instance:
             raise ValueError(f"Route to '{to_village}' does not exist in village '{from_village}'.")
         village.remove_route(to_village)
         self.routes_matrix[self.villages_map[from_village], self.villages_map[to_village]] = 0
+
+    def clear_routes(self) -> None:
+        for village in self.villages:
+            village.clear_routes()
+        self.routes_matrix = self._calculate_routes_matrix()
         
     def __str__(self) -> str:
         return f"Instance(villages={self.villages})"
